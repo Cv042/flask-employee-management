@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .search-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .btn-search {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+        }
+        .btn-search:hover {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+        }
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .pagination .page-link {
+            color: #667eea;
+            border: 1px solid #dee2e6;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .pagination .page-link:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+        .sort-btn {
+            background: none;
+            border: none;
+            color: #495057;
+            padding: 0;
+            margin-left: 5px;
+        }
+        .sort-btn:hover {
+            color: #667eea;
+        }
+        .sort-btn.active {
+            color: #667eea;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .department-badge {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+        }
+        .salary-text {
+            font-weight: 600;
+            color: #28a745;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-users me-2"></i>Employee Management
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text">
+                    <i class="fas fa-database me-1"></i>
+                    Total Employees: <span id="total-count">{{ employees.total }}</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Search and Filter Section -->
+    <div class="search-container">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2 class="text-center mb-4">
+                        <i class="fas fa-search me-2"></i>Employee Directory
+                    </h2>
+                    <form method="GET" action="/" class="row g-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent text-white border-white">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control bg-transparent text-white border-white" 
+                                       name="search" 
+                                       value="{{ search }}" 
+                                       placeholder="Search by name, email, department..."
+                                       style="color: white !important;">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select bg-transparent text-white border-white" name="sort_by">
+                                <option value="name" {{ 'selected' if sort_by == 'name' else '' }}>Sort by Name</option>
+                                <option value="department" {{ 'selected' if sort_by == 'department' else '' }}>Sort by Department</option>
+                                <option value="hire_date" {{ 'selected' if sort_by == 'hire_date' else '' }}>Sort by Hire Date</option>
+                                <option value="salary" {{ 'selected' if sort_by == 'salary' else '' }}>Sort by Salary</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex gap-2">
+                                <select class="form-select bg-transparent text-white border-white" name="sort_order">
+                                    <option value="asc" {{ 'selected' if sort_order == 'asc' else '' }}>Ascending</option>
+                                    <option value="desc" {{ 'selected' if sort_order == 'desc' else '' }}>Descending</option>
+                                </select>
+                                <button type="submit" class="btn btn-search">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h3><i class="fas fa-users"></i></h3>
+                    <h4>{{ employees.total }}</h4>
+                    <p class="mb-0">Total Employees</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center" style="background: linear-gradient(135deg, #4ecdc4 0%, #2ecc71 100%);">
+                    <h3><i class="fas fa-building"></i></h3>
+                    <h4>{{ departments|length }}</h4>
+                    <p class="mb-0">Departments</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center" style="background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);">
+                    <h3><i class="fas fa-file-alt"></i></h3>
+                    <h4>{{ employees.pages }}</h4>
+                    <p class="mb-0">Total Pages</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333;">
+                    <h3><i class="fas fa-eye"></i></h3>
+                    <h4>{{ employees.per_page }}</h4>
+                    <p class="mb-0">Per Page</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employee Table -->
+        <div class="table-container">
+            <div class="loading" id="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading employees...</p>
+            </div>
+
+            {% if employees.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>
+                                ID
+                                <button class="sort-btn" onclick="sortTable('id', '{{ 'desc' if sort_by == 'id' and sort_order == 'asc' else 'asc' }}')">
+                                    <i class="fas fa-sort"></i>
+                                </button>
+                            </th>
+                            <th>
+                                Name
+                                <button class="sort-btn {{ 'active' if sort_by == 'name' else '' }}" onclick="sortTable('name', '{{ 'desc' if sort_by == 'name' and sort_order == 'asc' else 'asc' }}')">
+                                    <i class="fas fa-sort{{ '-up' if sort_by == 'name' and sort_order == 'asc' else '-down' if sort_by == 'name' else '' }}"></i>
+                                </button>
+                            </th>
+                            <th>Email</th>
+                            <th>
+                                Department
+                                <button class="sort-btn {{ 'active' if sort_by == 'department' else '' }}" onclick="sortTable('department', '{{ 'desc' if sort_by == 'department' and sort_order == 'asc' else 'asc' }}')">
+                                    <i class="fas fa-sort{{ '-up' if sort_by == 'department' and sort_order == 'asc' else '-down' if sort_by == 'department' else '' }}"></i>
+                                </button>
+                            </th>
+                            <th>Position</th>
+                            <th>
+                                Salary
+                                <button class="sort-btn {{ 'active' if sort_by == 'salary' else '' }}" onclick="sortTable('salary', '{{ 'desc' if sort_by == 'salary' and sort_order == 'asc' else 'asc' }}')">
+                                    <i class="fas fa-sort{{ '-up' if sort_by == 'salary' and sort_order == 'asc' else '-down' if sort_by == 'salary' else '' }}"></i>
+                                </button>
+                            </th>
+                            <th>
+                                Hire Date
+                                <button class="sort-btn {{ 'active' if sort_by == 'hire_date' else '' }}" onclick="sortTable('hire_date', '{{ 'desc' if sort_by == 'hire_date' and sort_order == 'asc' else 'asc' }}')">
+                                    <i class="fas fa-sort{{ '-up' if sort_by == 'hire_date' and sort_order == 'asc' else '-down' if sort_by == 'hire_date' else '' }}"></i>
+                                </button>
+                            </th>
+                            <th>Phone</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees.items %}
+                        <tr>
+                            <td class="fw-bold">#{{ employee.id }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                                        <span class="text-white fw-bold">{{ employee.name[0].upper() }}</span>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ employee.name }}</div>
+                                        <small class="text-muted">{{ employee.position }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <a href="mailto:{{ employee.email }}" class="text-decoration-none">
+                                    {{ employee.email }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge department-badge 
+                                    {% if employee.department == 'Engineering' %}bg-info
+                                    {% elif employee.department == 'Marketing' %}bg-warning
+                                    {% elif employee.department == 'HR' %}bg-success
+                                    {% elif employee.department == 'Sales' %}bg-danger
+                                    {% elif employee.department == 'Finance' %}bg-primary
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ employee.department }}
+                                </span>
+                            </td>
+                            <td>{{ employee.position }}</td>
+                            <td class="salary-text">${{ "{:,.2f}".format(employee.salary) }}</td>
+                            <td>{{ employee.hire_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% if employee.phone %}
+                                    <a href="tel:{{ employee.phone }}" class="text-decoration-none">
+                                        {{ employee.phone }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="no-results">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4>No employees found</h4>
+                <p class="text-muted">Try adjusting your search criteria or filters.</p>
+                <a href="/" class="btn btn-primary">
+                    <i class="fas fa-refresh me-2"></i>Reset Search
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Pagination -->
+        {% if employees.items and employees.pages > 1 %}
+        <div class="d-flex justify-content-center mt-4">
+            <nav aria-label="Employee pagination">
+                <ul class="pagination pagination-lg">
+                    <!-- Previous Button -->
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('employee.index', page=pagination.prev_num, search=search, sort_by=sort_by, sort_order=sort_order) }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                    {% endif %}
+
+                    <!-- First Page -->
+                    {% if pagination.start_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('employee.index', page=1, search=search, sort_by=sort_by, sort_order=sort_order) }}">1</a>
+                    </li>
+                    {% if pagination.start_page > 2 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+
+                    <!-- Page Numbers -->
+                    {% for page_num in pagination.pages %}
+                    {% if page_num == pagination.current_page %}
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('employee.index', page=page_num, search=search, sort_by=sort_by, sort_order=sort_order) }}">{{ page_num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    <!-- Last Page -->
+                    {% if pagination.end_page < pagination.total_pages %}
+                    {% if pagination.end_page < pagination.total_pages - 1 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('employee.index', page=pagination.total_pages, search=search, sort_by=sort_by, sort_order=sort_order) }}">{{ pagination.total_pages }}</a>
+                    </li>
+                    {% endif %}
+
+                    <!-- Next Button -->
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('employee.index', page=pagination.next_num, search=search, sort_by=sort_by, sort_order=sort_order) }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Pagination Info -->
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                Showing {{ ((pagination.current_page - 1) * pagination.per_page) + 1 }} to 
+                {{ pagination.current_page * pagination.per_page if pagination.current_page * pagination.per_page < pagination.total_items else pagination.total_items }} 
+                of {{ pagination.total_items }} employees
+            </small>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">&copy; 2024 Employee Management System. Built with Flask & Bootstrap.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sort table function
+        function sortTable(column, order) {
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('sort_by', column);
+            currentUrl.searchParams.set('sort_order', order);
+            currentUrl.searchParams.set('page', '1'); // Reset to first page
+            window.location.href = currentUrl.toString();
+        }
+
+        // Show loading spinner during navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const links = document.querySelectorAll('a[href*="page="], form');
+            const loading = document.getElementById('loading');
+            
+            links.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (loading) {
+                        loading.style.display = 'block';
+                    }
+                });
+            });
+        });
+
+        // Auto-submit form on select change
+        document.querySelectorAll('select[name="sort_by"], select[name="sort_order"]').forEach(select => {
+            select.addEventListener('change', function() {
+                this.form.submit();
+            });
+        });
+
+        // Highlight search terms
+        function highlightSearchTerms() {
+            const searchTerm = '{{ search }}';
+            if (searchTerm) {
+                const regex = new RegExp(`(${searchTerm})`, 'gi');
+                document.querySelectorAll('tbody td').forEach(td => {
+                    if (td.textContent.toLowerCase().includes(searchTerm.toLowerCase())) {
+                        td.innerHTML = td.innerHTML.replace(regex, '<mark>$1</mark>');
+                    }
+                });
+            }
+        }
+
+        // Call highlight function on page load
+        document.addEventListener('DOMContentLoaded', highlightSearchTerms);
+    </script>
+</body>
+</html>
